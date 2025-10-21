@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: Deployment pipeline (lint only)
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  simple_deployment_pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 16       # ← el Pokedex del curso requiere Node 16
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Lint
+        run: npm run eslint      # o "npm run lint" si así está en tu package.json
