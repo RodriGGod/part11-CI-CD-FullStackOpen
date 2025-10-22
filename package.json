@@ -8,7 +8,7 @@
     "start-prod": "node app.js",
     "eslint": "eslint .",
     "build": "npm run build",   
-    "test": "jest"
+    "test": "cc jest"
   },
   "repository": {
     "type": "git",
