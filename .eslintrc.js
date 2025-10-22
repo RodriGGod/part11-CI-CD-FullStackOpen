@@ -25,6 +25,11 @@ module.exports = {
     {
       files: ['**/*.test.*', '**/__tests__/**'],
       env: { jest: true }
+    },
+    {
+      files: ['e2e-tests/**/*.js', 'e2e-tests/**/*.cy.js'],
+      env: { mocha: true, browser: true }, // describe/it y DOM
+      globals: { cy: 'readonly', Cypress: 'readonly' }
     }
   ]
 };
