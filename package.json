@@ -6,9 +6,9 @@
   "scripts": {
     "start": "webpack-dev-server --open --mode development",
     "start-prod": "node app.js",
-    "test": "jest",
-    "build": "webpack --mode production",
-    "Lint": "npm run lint"
+    "eslint": "eslint .",
+    "build": "npm run build",   
+    "test": "jest"
   },
   "repository": {
     "type": "git",
