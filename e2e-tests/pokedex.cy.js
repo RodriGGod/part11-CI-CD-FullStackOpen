@@ -1,3 +1,6 @@
+/* global cy, Cypress */
+
+
 describe('Pokedex', () => {
   it('front page can be opened', () => {
     cy.visit('http://localhost:5000')
