@@ -1,13 +1,25 @@
-name: Hello World!
+name: Hello World + Date & LS
 
 on:
   push:
-    branches: [ main ]   
-  workflow_dispatch:      
+  pull_request:
+  workflow_dispatch:
 
 jobs:
-  hello:
+  info_job:
     runs-on: ubuntu-latest
     steps:
       - name: Say hello
         run: echo "Hello World!"
+
+      - name: Print date
+        run: date
+
+      - name: List current dir (before checkout) - should be empty-ish
+        run: ls -la
+
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: List current dir (after checkout) - now you see the repo files
+        run: ls -la
