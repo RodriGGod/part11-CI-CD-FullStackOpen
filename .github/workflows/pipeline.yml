@@ -2,15 +2,11 @@
 name: Deployment pipeline
 
 on:
-  push:
+  push:                      # CI en cualquier rama; deploy/tag sólo en push a main por 'if:'
   pull_request:
-    branches: [main] # PRs que apuntan a main
-    types: [opened, synchronize]
+    branches: [ main ]
+    types: [ opened, synchronize ]
   workflow_dispatch:
-
-concurrency:
-  group: deploy-prod
-  cancel-in-progress: false
 
 jobs:
   ci:
@@ -20,7 +16,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "16" # pon '20' si migraste a Node 20
+          node-version: '16'          # Usa 20 si tu proyecto ya va con Node 20
           cache: npm
 
       - name: Install dependencies
@@ -37,6 +33,7 @@ jobs:
         env:
           CI: true
 
+      # E2E con Cypress (ajusta si usas Playwright)
       - name: e2e tests
         uses: cypress-io/github-action@v5
         with:
@@ -44,43 +41,71 @@ jobs:
           start: npm run start-prod
           wait-on: http://localhost:5000
 
-      - name: Show event/ref (debug)
-        run: |
-          echo "event=${{ github.event_name }}"
-          echo "ref=${{ github.ref }}"
+      # ---- Notificación a Discord si el job CI falla ----
+      - name: Notify CI failure to Discord
+        if: failure()
+        uses: rjstone/discord-webhook-notify@v1
+        with:
+          severity: error
+          description: |
+            **Build failed** in `${{ github.workflow }}` / job `${{ github.job }}`
+            Repo: `${{ github.repository }}`
+            Branch: `${{ github.ref_name }}`
+            Commit: `${{ github.sha }}`
+            By: `${{ github.actor }}`
+            Message: `${{ github.event.head_commit.message || github.event.pull_request.title || '' }}`
+            Link: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
 
   deploy:
     needs: ci
     runs-on: ubuntu-latest
+    # Sólo despliega en push a main y si NO hay '#skip' en el mensaje de commit
     if: github.event_name == 'push'
-      && github.ref == 'refs/heads/main'
-      && !contains((github.event.head_commit.message || ''), '#skip')
+        && github.ref == 'refs/heads/main'
+        && !contains((github.event.head_commit.message || ''), '#skip')
     steps:
-      - name: Trigger deployment (Render Deploy Hook API)
+      - name: Trigger deployment (Render Deploy Hook)
         run: |
           set -e
           CODE=$(curl -sS -o /dev/null -w "%{http_code}" "https://api.render.com/deploy/srv-${{ secrets.RENDER_SERVICE_ID }}?key=${{ secrets.RENDER_API_KEY }}")
           echo "Render API responded: $CODE"
           test "$CODE" = "200"
+
+      # ---- Notificación a Discord cuando el despliegue ha sido lanzado OK ----
+      - name: Notify successful deploy to Discord
+        if: success()
+        uses: rjstone/discord-webhook-notify@v1
+        with:
+          severity: informational
+          description: |
+            ✅ **Deployed** `${{ github.repository }}`
+            Branch: `${{ github.ref_name }}`
+            Commit: `${{ github.sha }}`
+            By: `${{ github.actor }}`
+            ${{ secrets.RENDER_APP_URL && format('URL: {0}', secrets.RENDER_APP_URL) }}
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+
   tag_release:
-    needs: [ci, deploy] # o solo [ci] si no quieres esperar al deploy
+    needs: [ci, deploy]               # espera a CI y al deploy
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-      && github.ref == 'refs/heads/main'
-      && !contains((github.event.head_commit.message || ''), '#skip')
     permissions:
       contents: write
-
+    # Sólo etiqueta en push a main y si NO hay '#skip'
+    if: github.event_name == 'push'
+        && github.ref == 'refs/heads/main'
+        && !contains((github.event.head_commit.message || ''), '#skip')
     steps:
       - name: Checkout repo (with full history)
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # importante para que existan los tags y el historial
+          fetch-depth: 0
 
       - name: Bump version and push tag
-        uses: anothrNick/github-tag-action@1.64.0
+        # Recomendación: pinea por SHA del commit de la acción (más seguro que tag semántico)
+        uses: anothrNick/github-tag-action@8c8163ef62cf9c4677c8e800f36270af27930f42
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DEFAULT_BUMP: patch # por defecto sube el PATCH
-          WITH_V: true # tags tipo v1.2.3 (opcional)
-          # DRY_RUN: "true"     # activa si quieres probar sin crear tag real
+          DEFAULT_BUMP: patch          # por defecto incrementa PATCH x.y.(z+1)
+          WITH_V: true                 # crea tags tipo v1.2.3
+          # DRY_RUN: "true"            # actívalo si quieres probar sin crear tag
