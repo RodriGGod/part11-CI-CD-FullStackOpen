@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-console
 const express = require('express');
 const app = express();
 
