@@ -4,7 +4,7 @@ name: Deployment pipeline
 on:
   push:
   pull_request:
-    branches: [main]      # PRs que apuntan a main
+    branches: [main] # PRs que apuntan a main
     types: [opened, synchronize]
   workflow_dispatch:
 
@@ -20,7 +20,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '16'     # pon '20' si migraste a Node 20
+          node-version: "16" # pon '20' si migraste a Node 20
           cache: npm
 
       - name: Install dependencies
@@ -52,7 +52,9 @@ jobs:
   deploy:
     needs: ci
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    if: github.event_name == 'push'
+      && github.ref == 'refs/heads/main'
+      && !contains(join(github.event.commits.*.message, ' '), '#skip')
     steps:
       - name: Trigger deployment (Render Deploy Hook API)
         run: |
@@ -61,17 +63,19 @@ jobs:
           echo "Render API responded: $CODE"
           test "$CODE" = "200"
   tag_release:
-      needs: [ci, deploy]                 # espera a CI (y deploy si lo dejas)
-      runs-on: ubuntu-latest
-      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-      permissions:
-        contents: write                   # importante para crear el tag
-      steps:
-        - name: Bump version and push tag
-          uses: anothrNick/github-tag-action@1.64.0   # o la última versión
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # token automático del repo
-            DEFAULT_BUMP: patch                       # por defecto sube el PATCH
-            WITH_V: true                              # crea tags tipo v1.2.3 (opcional)
-            # DRY_RUN: "true"                         # prueba sin crear tag real
-            # INITIAL_VERSION: "0.0.0"   
+    needs: [ci, deploy] # espera a CI (y deploy si lo dejas)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+      && github.ref == 'refs/heads/main'
+      && !contains(join(github.event.commits.*.message, ' '), '#skip')
+    permissions:
+      contents: write # importante para crear el tag
+    steps:
+      - name: Bump version and push tag
+        uses: anothrNick/github-tag-action@1.64.0 # o la última versión
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # token automático del repo
+          DEFAULT_BUMP: patch # por defecto sube el PATCH
+          WITH_V: true # crea tags tipo v1.2.3 (opcional)
+          # DRY_RUN: "true"                         # prueba sin crear tag real
+          # INITIAL_VERSION: "0.0.0"
