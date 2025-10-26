@@ -2,6 +2,13 @@
 const express = require('express');
 const app = express();
 
+app.get('/health', (_req, res) => {
+  res.send('ok');
+});
+
+app.get('/version', (_req, res) => {
+  res.send('3');           // cambia este número para verificar despliegues
+});
 
 app.use(express.static('dist'))
 
@@ -13,7 +20,5 @@ app.listen(PORT, () => {
 })
 
 
-app.get('/health', (_req, res) => {
-  res.send('ok');
-});
+
 
