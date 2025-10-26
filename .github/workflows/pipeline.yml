@@ -4,7 +4,12 @@ name: Deployment pipeline
 on:
   push:
     branches: [ main, master ]   # <- se ejecuta al pushear a main o master
-  workflow_dispatch:              # <- también puedes lanzarlo a mano desde Actions
+               # <- también puedes lanzarlo a mano desde Actions
+
+  pull_request:
+    branches: [main]      # PRs que apuntan a main
+    types: [opened, synchronize]
+  workflow_dispatch:
 
 concurrency:
   group: deploy-prod
@@ -50,6 +55,7 @@ jobs:
   deploy:
     needs: ci
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' }} 
     steps:
       - name: Trigger deployment (Render Deploy Hook API)
         run: |
