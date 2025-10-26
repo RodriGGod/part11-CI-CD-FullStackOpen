@@ -55,7 +55,7 @@ jobs:
   deploy:
     needs: ci
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' }} 
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     steps:
       - name: Trigger deployment (Render Deploy Hook API)
         run: |
@@ -63,3 +63,18 @@ jobs:
           CODE=$(curl -sS -o /dev/null -w "%{http_code}" "https://api.render.com/deploy/srv-${{ secrets.RENDER_SERVICE_ID }}?key=${{ secrets.RENDER_API_KEY }}")
           echo "Render API responded: $CODE"
           test "$CODE" = "200"
+  tag_release:
+      needs: [ci, deploy]                 # espera a CI (y deploy si lo dejas)
+      runs-on: ubuntu-latest
+      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      permissions:
+        contents: write                   # importante para crear el tag
+      steps:
+        - name: Bump version and push tag
+          uses: anothrNick/github-tag-action@1.64.0   # o la última versión
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # token automático del repo
+            DEFAULT_BUMP: patch                       # por defecto sube el PATCH
+            WITH_V: true                              # crea tags tipo v1.2.3 (opcional)
+            # DRY_RUN: "true"                         # prueba sin crear tag real
+            # INITIAL_VERSION: "0.0.0"   
