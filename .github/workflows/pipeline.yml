@@ -3,18 +3,22 @@ name: Deployment pipeline
 
 on:
   push:
-  pull_request:
-  workflow_dispatch:
+    branches: [ main, master ]   # <- se ejecuta al pushear a main o master
+  workflow_dispatch:              # <- también puedes lanzarlo a mano desde Actions
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
 
 jobs:
-  ci:                             # ← renombrado (antes: simple_deployment_pipeline)
+  ci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '16'
+          node-version: '16'     # pon '20' si migraste a Node 20
           cache: npm
 
       - name: Install dependencies
@@ -38,12 +42,14 @@ jobs:
           start: npm run start-prod
           wait-on: http://localhost:5000
 
+      - name: Show event/ref (debug)
+        run: |
+          echo "event=${{ github.event_name }}"
+          echo "ref=${{ github.ref }}"
+
   deploy:
     needs: ci
     runs-on: ubuntu-latest
-    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-          && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-          && needs.ci.result == 'success' }}
     steps:
       - name: Trigger deployment (Render Deploy Hook API)
         run: |
