@@ -3,9 +3,6 @@ name: Deployment pipeline
 
 on:
   push:
-    branches: [ main, master ]   # <- se ejecuta al pushear a main o master
-               # <- también puedes lanzarlo a mano desde Actions
-
   pull_request:
     branches: [main]      # PRs que apuntan a main
     types: [opened, synchronize]
