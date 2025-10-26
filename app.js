@@ -2,7 +2,8 @@
 const express = require('express');
 const app = express();
 
-app.get('/health', (_req, res) => {
+app.get('/health', (req, res) => {
+  if (true) throw new Error('boom');
   res.send('ok');
 });
 
