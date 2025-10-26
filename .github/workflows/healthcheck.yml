@@ -3,10 +3,7 @@ name: Periodic health check
 on:
   # Para probarlo ahora mismo desde la UI
   workflow_dispatch:
-  # Para que se ejecute al commitear este archivo por primera vez (fácil para validar)
-  push:
-    paths: [ ".github/workflows/healthcheck.yml" ]
-  # Cuando ya funcione, deja SOLO esto (el cron es en UTC):
+  
   schedule:
     - cron: "0 7 * * *"   # todos los días a las 07:00 UTC (~09:00 Madrid)
 
