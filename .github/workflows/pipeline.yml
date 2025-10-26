@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
       && github.ref == 'refs/heads/main'
-      && !contains(join(github.event.commits.*.message, ' '), '#skip')
+      && !contains((github.event.head_commit.message || ''), '#skip')
     steps:
       - name: Trigger deployment (Render Deploy Hook API)
         run: |
@@ -63,19 +63,24 @@ jobs:
           echo "Render API responded: $CODE"
           test "$CODE" = "200"
   tag_release:
-    needs: [ci, deploy] # espera a CI (y deploy si lo dejas)
+    needs: [ci, deploy] # o solo [ci] si no quieres esperar al deploy
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
       && github.ref == 'refs/heads/main'
-      && !contains(join(github.event.commits.*.message, ' '), '#skip')
+      && !contains((github.event.head_commit.message || ''), '#skip')
     permissions:
-      contents: write # importante para crear el tag
+      contents: write
+
     steps:
+      - name: Checkout repo (with full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # importante para que existan los tags y el historial
+
       - name: Bump version and push tag
-        uses: anothrNick/github-tag-action@1.64.0 # o la última versión
+        uses: anothrNick/github-tag-action@1.64.0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # token automático del repo
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEFAULT_BUMP: patch # por defecto sube el PATCH
-          WITH_V: true # crea tags tipo v1.2.3 (opcional)
-          # DRY_RUN: "true"                         # prueba sin crear tag real
-          # INITIAL_VERSION: "0.0.0"
+          WITH_V: true # tags tipo v1.2.3 (opcional)
+          # DRY_RUN: "true"     # activa si quieres probar sin crear tag real
