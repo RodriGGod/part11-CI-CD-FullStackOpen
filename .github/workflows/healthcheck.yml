@@ -1,0 +1,46 @@
+name: Periodic health check
+
+on:
+  # Para probarlo ahora mismo desde la UI
+  workflow_dispatch:
+  
+  schedule:
+    - cron: "0 7 * * *"   # todos los días a las 07:00 UTC (~09:00 Madrid)
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health (200 esperado)
+        env:
+          HEALTH_URL: ${{ secrets.RENDER_APP_URL }}/health
+        run: |
+          set -e
+          echo "Hitting: $HEALTH_URL"
+          # 3 reintentos con backoff simple
+          for i in 1 2 3; do
+            CODE=$(curl -sS -o /dev/null -w "%{http_code}" "$HEALTH_URL") || CODE=000
+            echo "Attempt $i → HTTP $CODE"
+            if [ "$CODE" = "200" ]; then
+              echo "OK"
+              exit 0
+            fi
+            sleep $((i*5))
+          done
+          echo "Health check FAILED"
+          exit 1
+
+      # (Opcional) Notifica al Discord del curso si falla el ping
+      - name: Notify health check failure (Discord)
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          HEALTH_URL: ${{ secrets.RENDER_APP_URL }}/health
+        run: |
+          MSG="❌ Health check FAILED\nURL: ${HEALTH_URL}\nRepo: ${GITHUB_REPOSITORY}\nRun: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          payload=$(printf '{"content": "%s"}' "$(printf '%s' "$MSG" | sed 's/"/\\"/g')")
+          CODE=$(curl -sS -o /dev/null -w "%{http_code}" \
+            -H "Content-Type: application/json" \
+            -d "$payload" \
+            "$DISCORD_WEBHOOK")
+          echo "Discord responded: $CODE"
